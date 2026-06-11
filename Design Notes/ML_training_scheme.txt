@@ -1,0 +1,158 @@
+ML training pipeline
+
+1. Clean the raw tables into normalized entity tables:
+- events_clean
+- fighters_clean
+- fights_clean
+- fighter_fight_stats_clean
+
+2. Build point-in-time fighter snapshots before every fight:
+- one row per fighter per fight
+- only uses information available before that fight
+- stores pre-fight experience, rate, and Elo features
+
+3. Build one fight-level ML schema row per decisive fight:
+- orient every row as fighter A vs fighter B using the order from fights_clean
+- target column is fighter_a_won
+- every feature column is fighter_A_value minus fighter_B_value
+
+4. Build model-ready training data:
+- start from ml_training_schema
+- only keep fight rows dated 2010-01-01 and later as trainable examples
+- still allow pre-2010 fights to contribute to historical fighter features in the schema stage
+- keep decisive rows with target present
+- duplicate every fight into two symmetric rows:
+  one original orientation and one flipped orientation
+- normalize weight_class into a primary division plus fight-type flags
+- one-hot encode the normalized primary division
+- keep chronological train / validation / test splits
+- keep missing numeric values as `NaN`
+- remove raw text/trace columns from the model-ready training files
+
+Leakage rule
+- Do not use UFCStats profile aggregates such as profile_SLpM or profile_TD_avg as historical training features.
+- Those profile fields are current-as-of-scrape aggregates and would leak future information into older fights.
+- They are kept in fighters_clean for audit/reference only.
+
+Snapshot formulas
+
+Static fighter attributes
+- age_years = (fight_date - dob) / 365.25
+- height_cm = parsed fighter height
+- reach_cm = parsed fighter reach
+- stance = raw stance string from fighter profile
+
+Official-history features
+- ufc_fights = count of prior decisive UFC fights already seen in chronology
+- ufc_win_rate = prior wins / prior decisive UFC fights
+- days_since_last_fight = current fight date - most recent prior decisive fight date
+- overall_elo = fighter Elo before the current fight, initialized at 1500
+- ufc_minutes = sum(prior fight_duration_seconds) / 60
+- last3_win_rate = wins in last 3 prior decisive fights / count of those fights
+- finish_rate = prior wins by non-decision / prior wins
+
+Stat-history features
+- slpm = prior significant strikes landed / prior stat-tracked fight minutes
+- sapm = prior significant strikes absorbed / prior stat-tracked fight minutes
+- strike_differential = slpm - sapm
+- td_avg = 15 * prior takedowns landed / prior stat-tracked fight minutes
+- td_accuracy = prior takedowns landed / prior takedown attempts
+- td_defense = (prior opponent takedown attempts - prior takedowns allowed) / prior opponent takedown attempts
+- td_attempt_rate = 15 * prior takedown attempts / prior stat-tracked fight minutes
+- control_time_per_fight = prior total control time seconds / prior stat-tracked fights
+- sub_avg = 15 * prior submission attempts / prior stat-tracked fight minutes
+- last3_slpm = significant strikes landed across last 3 stat-tracked fights / minutes in those fights
+- last3_td_avg = 15 * takedowns landed across last 3 stat-tracked fights / minutes in those fights
+- sig_strike_accuracy = prior significant strikes landed / prior significant strike attempts
+- sig_strike_defense = (prior opponent significant strike attempts - prior significant strikes absorbed) / prior opponent significant strike attempts
+- sig_strike_attempted_per_min = prior significant strike attempts / prior stat-tracked fight minutes
+
+Fight-level training schema
+
+Metadata
+- fight_id
+- event_id
+- event_date
+- fighter_a_id
+- fighter_a_name
+- fighter_b_id
+- fighter_b_name
+- weight_class
+- scheduled_rounds
+
+Target
+- fighter_a_won = 1 if fighter A won, else 0
+
+Feature diffs
+- age_diff = fighter A age_years - fighter B age_years
+- height_diff = fighter A height_cm - fighter B height_cm
+- reach_diff = fighter A reach_cm - fighter B reach_cm
+- ufc_fights_diff = fighter A ufc_fights - fighter B ufc_fights
+- ufc_win_rate_diff = fighter A ufc_win_rate - fighter B ufc_win_rate
+- days_since_last_fight_diff = fighter A days_since_last_fight - fighter B days_since_last_fight
+- slpm_diff = fighter A slpm - fighter B slpm
+- sapm_diff = fighter A sapm - fighter B sapm
+- strike_differential_diff = fighter A strike_differential - fighter B strike_differential
+- td_avg_diff = fighter A td_avg - fighter B td_avg
+- td_accuracy_diff = fighter A td_accuracy - fighter B td_accuracy
+- td_defense_diff = fighter A td_defense - fighter B td_defense
+- td_attempt_rate_diff = fighter A td_attempt_rate - fighter B td_attempt_rate
+- control_time_per_fight_diff = fighter A control_time_per_fight - fighter B control_time_per_fight
+- sub_avg_diff = fighter A sub_avg - fighter B sub_avg
+- overall_elo_diff = fighter A overall_elo - fighter B overall_elo
+- ufc_minutes_diff = fighter A ufc_minutes - fighter B ufc_minutes
+- last3_win_rate_diff = fighter A last3_win_rate - fighter B last3_win_rate
+- last3_slpm_diff = fighter A last3_slpm - fighter B last3_slpm
+- last3_td_avg_diff = fighter A last3_td_avg - fighter B last3_td_avg
+- finish_rate_diff = fighter A finish_rate - fighter B finish_rate
+- sig_strike_accuracy_diff = fighter A sig_strike_accuracy - fighter B sig_strike_accuracy
+- sig_strike_defense_diff = fighter A sig_strike_defense - fighter B sig_strike_defense
+- sig_strike_attempted_per_min_diff = fighter A sig_strike_attempted_per_min - fighter B sig_strike_attempted_per_min
+
+Training-data preparation rules
+
+- Numeric feature missing values:
+  leave missing numeric values as `NaN`.
+- Rationale:
+  the model-ready table should not invent fake numeric values where we do not have the data.
+- Weight class encoding:
+  derive a normalized primary division from the raw weight-class text, then one-hot encode that normalized division.
+- Fight-type flags from weight class text:
+  add `is_title_fight` and `is_women_fight`.
+- Split policy:
+  after filtering to fight rows on or after `2010-01-01`, sort original fight rows by `event_date`, then `fight_id`, and assign the first 70% to `train`, the next 15% to `validation`, and the final 15% to `test`.
+  after the split is assigned, duplicate each fight into its mirrored orientation inside the same split.
+
+Encoding breakdown
+
+- Target encoding:
+  `fighter_a_won` is binary. `1` means fighter A won, `0` means fighter A lost.
+- Symmetry rule:
+  every fight appears twice in the model-ready data.
+  in the mirrored row, `fighter_a_won` is flipped and every directional diff feature is multiplied by `-1`.
+  non-directional features such as `scheduled_rounds`, `is_title_fight`, `is_women_fight`, and the weight-class one-hot columns stay the same.
+- Weight class one-hot encoding:
+  exactly one normalized division column is `1` for a fight and the rest are `0`.
+- Current normalized division columns:
+  `weight_class_bantamweight`
+  `weight_class_catch_weight`
+  `weight_class_featherweight`
+  `weight_class_flyweight`
+  `weight_class_heavyweight`
+  `weight_class_light_heavyweight`
+  `weight_class_lightweight`
+  `weight_class_middleweight`
+  `weight_class_open_weight`
+  `weight_class_super_heavyweight`
+  `weight_class_unknown`
+  `weight_class_welterweight`
+  `weight_class_women_s_bantamweight`
+  `weight_class_women_s_featherweight`
+  `weight_class_women_s_flyweight`
+  `weight_class_women_s_strawweight`
+- Fight-type flag encoding:
+  `is_title_fight = 1` if the raw weight-class text contains `title`, including interim title fights, else `0`.
+  `is_women_fight = 1` if the raw weight-class text contains `women`, else `0`.
+- Traceability:
+  the full fight metadata and raw text values stay in `ml_training_schema.csv`.
+  the model-ready training files remove those raw text columns so they are safer to feed into XGBoost.

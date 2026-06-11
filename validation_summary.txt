@@ -1,0 +1,7 @@
+Total events: 775
+Total fights: 8714
+Total fighters: 2700
+Missing DOB count: 103
+Missing reach count: 655
+Failed validations: 0
+Warnings: 2

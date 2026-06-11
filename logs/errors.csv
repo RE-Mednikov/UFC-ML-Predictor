@@ -1,0 +1,4 @@
+stage,entity_id,url,message,scraped_at
+events,,http://ufcstats.com/statistics/events/completed?page=all,Blocked by browser challenge,2026-06-04T07:05:27.592253+00:00
+events,,http://ufcstats.com/statistics/events/completed?page=all,Blocked by browser challenge,2026-06-04T07:06:36.415951+00:00
+events,,http://ufcstats.com/statistics/events/completed?page=all,Blocked by browser challenge,2026-06-04T07:06:59.595564+00:00

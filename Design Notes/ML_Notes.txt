@@ -1,0 +1,37 @@
+n_estimators: number of trees, more trees = more learning capacity, too many can overfit, commonly starts between 100 - 1000
+learning_rate = how much each tree contributes, smaller values learn more slowly but can generalize better, common: 0.01, 0.03, 0.05, 0.1
+max_depth = maximum depth of each tree, deeper trees capture more complex patterns but overfit more easily, common values: 3 - 8
+subsample = fraction of training rows per tree, helps reduce overfitting, common values: 0.6 - 1.0
+colsample_bytree = fraction of feature columns used per tree, helps reduce overfitting, common values: 0.5-1.0
+eval_metric: tells XGBoost what metric to monitor during training (ex. logloss, auc)
+random_state = fixed seed for reproducibility (ex. 42)
+min_child_weight = makes splits more conservative, larger value = less overfitting, common values: 1, 3, 5
+gamma = minimum improvement required to make a split, larger values = more conservative trees, common values: 0, 0.1, 0.3, 1
+reg_alpha = L1 regularization, can help shrink noisy features
+reg_lambda = L2 regularization, usually leave at default or lightly tune
+scale_pos_weight = useful if your classes are imbalanced, if wins/losses are roughly balanced probably not needed
+
+
+log_loss:
+- measures how good the predicted probabilities are
+- rewards confident correct probabilities
+- strongly punishes confident wrong probabilities
+- lower is better
+- example: if true result = 1, predicted prob of 0.9 -> good, 0.51 -> okay, 0.01 -> very balanced
+- often best metric when you care about probability quality
+
+
+roc_auc_score:
+- measures ranking ability
+- asks: does the model usually give winners higher prob than losers
+- does not care about a fixed threshold like 0.5
+- higher is better, closer to 1.0
+- good for seeing whether the model separates classes weight_class_light_heavyweight
+
+
+accuracy_score:
+- percentage of correct 0/1 predictions after thresholding
+- higher is better
+- depends on threshold, usually 0.5
+- simple, weaker than log loss for betting/prob cause it ignores model confidence
+- ie. if over threshold percentage = 1, if under = 0

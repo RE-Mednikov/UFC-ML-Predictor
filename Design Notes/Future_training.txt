@@ -1,0 +1,24 @@
+Things to Test in Future:
+- test out no fighters without 2 or 3 fights in the UFC
+- test seperate models for different weight classes and other partitions, then we can tune parameters for each to its respective data set/results, and have more accuracy by using mutliple models across the different fights and using the right one for each prediction. However be careful because it is possible that data from different categories can actually be useful for them both, or one of them. Will need to test this.
+- go further into understanding why each parameter does what it does and works best at the set values (will help learn and adjust for future)
+- more last 3 data (like last 3 TD accuracy, SApM, etc.) - prio
+- head pct, body pct, and leg
+- career_length_dif (since UFC debut)
+- ko_win_rate, sub_win_rate, decision_win_rate
+- independent elos: striking_elo, grappling_elo, submission_elo, recent_elo, round_specific_metrics
+- strike ratio differential = SLpM/SApm instead of strike differential (SLpM -SApm), ration may preform better
+- different k and division values for elo rating
+- test out different model variables, n_estimators, etc. etc.
+- add probability calibration
+
+
+
+Tested:
+- test out no debut fighters (no meaningful benefit)
+
+
+
+Log:
+Tested different parameters with parameter_sweep.py, current parameters for model training are based on those results
+Settled with following improvements from baseline: 0.7 subsample, 7 min child weight, 6 max depth. Not including 6 max depth (back to 4) makes log loss slightly better but harms AUC and accuracy slightly
