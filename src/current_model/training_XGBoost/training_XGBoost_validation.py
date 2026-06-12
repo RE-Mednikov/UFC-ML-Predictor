@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-from sklearn.metrics import accuracy_score, log_loss, roc_auc_score
+from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 from xgboost import XGBClassifier
 
 try:
@@ -97,8 +97,9 @@ def canonicalize_results(results_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def print_metric_block(label: str, y_true: pd.Series, probabilities: pd.Series, predictions: pd.Series) -> None:
-    # Log loss uses probabilities, AUC measures ranking quality, and accuracy uses hard picks.
+    # Log loss and Brier score use probabilities, AUC measures ranking quality, and accuracy uses hard picks.
     print(f"{label} Log Loss:", log_loss(y_true, probabilities))
+    print(f"{label} Brier Score:", brier_score_loss(y_true, probabilities))
     print(f"{label} AUC:", roc_auc_score(y_true, probabilities))
     print(f"{label} Accuracy:", accuracy_score(y_true, predictions))
 
@@ -192,6 +193,7 @@ def subgroup_metrics(results_df: pd.DataFrame, label: str, mask: pd.Series) -> N
 
     print(f"\n{label} ({len(subset)} rows)")
     print("Log Loss:", log_loss(subset_target, subset_probabilities))
+    print("Brier Score:", brier_score_loss(subset_target, subset_probabilities))
     print("AUC:", roc_auc_score(subset_target, subset_probabilities))
     print("Accuracy:", accuracy_score(subset_target, subset_predictions))
 
@@ -204,6 +206,7 @@ def weight_class_metrics(results_df: pd.DataFrame) -> None:
             continue
         print(f"\n{weight_class} ({len(subset)} rows)")
         print("Log Loss:", log_loss(subset["fighter_a_won"], subset["prob_fighter_a_win"]))
+        print("Brier Score:", brier_score_loss(subset["fighter_a_won"], subset["prob_fighter_a_win"]))
         print("AUC:", roc_auc_score(subset["fighter_a_won"], subset["prob_fighter_a_win"]))
         print("Accuracy:", accuracy_score(subset["fighter_a_won"], subset["pred_fighter_a_win"]))
 
