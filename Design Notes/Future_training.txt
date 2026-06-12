@@ -11,6 +11,7 @@ Things to Test in Future:
 - different k and division values for elo rating
 - test out different model variables, n_estimators, etc. etc.
 - add probability calibration
+- can I remove the html raw files?
 
 
 
