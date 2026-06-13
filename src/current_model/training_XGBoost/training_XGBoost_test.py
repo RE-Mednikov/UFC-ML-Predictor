@@ -11,7 +11,7 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from src.current_model.training_XGBoost.training_XGBoost import (
+from src.current_model.training_XGBoost.training_XGBoost_validation import (
     LOW_EXPERIENCE_THRESHOLD,
     add_experience_columns,
     add_weight_class_labels,
